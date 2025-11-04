@@ -33,10 +33,9 @@ Matplotlib / Emojis / Tkinter (if used) – for displaying emojis
 📁 Project Structure
 
 Voice-Based-Emoji-Reaction-Generator/
-│
-├── record.py                  # Records voice input
-├── voice_emoji.py             # Detects emotion and shows corresponding emoji
-└── README.md                  # Project documentation
+ ── record.py                  # Records voice input
+ ── voice_emoji.py             # Detects emotion and shows corresponding emoji
+ ── README.md                  # Project documentation
 
 ---
 
