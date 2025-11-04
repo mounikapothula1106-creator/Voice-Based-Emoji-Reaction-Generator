@@ -1,0 +1,104 @@
+# voice_emoji.py
+import sounddevice as sd
+import numpy as np
+import speech_recognition as sr
+from textblob import TextBlob
+import sys
+
+# 🎧 Settings
+SAMPLE_RATE = 16000   # 16 kHz audio
+DURATION = 4          # record duration in seconds
+SAMPLE_WIDTH = 2      # bytes per sample for int16
+
+
+# 💬 Emotion detection using keywords + sentiment
+def detect_emotion(text):
+    text_lower = text.lower()
+
+    # Keyword-based detection
+    if any(word in text_lower for word in ["angry", "mad", "furious", "annoyed"]):
+        return "😡", "Angry", -0.7
+    elif any(word in text_lower for word in ["love", "awesome", "amazing", "beautiful", "great"]):
+        return "😍", "Loved", 0.6
+    elif any(word in text_lower for word in ["tired", "sleepy", "exhausted", "lazy"]):
+        return "😪", "Tired", -0.1
+    elif any(word in text_lower for word in ["shocked", "surprised", "wow", "omg", "what"]):
+        return "😲", "Surprised", 0.2
+    elif any(word in text_lower for word in ["scared", "afraid", "fear", "terrified"]):
+        return "😨", "Scared", -0.3
+    elif any(word in text_lower for word in ["bored", "meh", "nothing", "idk"]):
+        return "😐", "Bored", 0
+    elif any(word in text_lower for word in ["cry", "sad", "upset", "depressed", "disappointed"]):
+        return "😔", "Sad", -0.6
+    elif any(word in text_lower for word in ["happy", "glad", "joy", "cheerful", "smile"]):
+        return "😊", "Happy", 0.6
+    
+    # Fallback sentiment analysis
+    blob = TextBlob(text)
+    polarity = blob.sentiment.polarity
+    if polarity > 0.35:
+        return "😁", "Positive", polarity
+    elif polarity < -0.35:
+        return "☹️", "Negative", polarity
+    else:
+        return "😐", "Neutral", polarity
+
+
+# 🎙 Record voice using sounddevice
+def record_raw(duration=DURATION, fs=SAMPLE_RATE):
+    print(f"🎤 Recording for {duration} seconds — speak clearly now...")
+    try:
+        recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
+        sd.wait()
+        return recording
+    except Exception as e:
+        print("Recording failed:", e)
+        sys.exit(1)
+
+
+# 🔊 Convert NumPy array → bytes for recognizer
+def audiobytes_from_numpy(np_array):
+    arr = np_array
+    if arr.ndim > 1:
+        arr = arr.reshape(-1)
+    return arr.tobytes()
+
+
+# 🧠 Speech recognition via Google API
+def recognize_from_bytes(audio_bytes, fs=SAMPLE_RATE, sample_width=SAMPLE_WIDTH):
+    recognizer = sr.Recognizer()
+    audio_data = sr.AudioData(audio_bytes, fs, sample_width)
+    try:
+        text = recognizer.recognize_google(audio_data)
+        return text
+    except sr.UnknownValueError:
+        return None
+    except sr.RequestError as e:
+        print("⚠️ Speech recognition failed (check internet):", e)
+        return None
+
+
+# 🚀 Main logic
+def main():
+    print("Press Enter to start recording...\n")
+    input()
+    raw = record_raw()
+    audio_bytes = audiobytes_from_numpy(raw)
+    
+    print("🎧 Processing... please wait...")
+    text = recognize_from_bytes(audio_bytes)
+
+    if text is None:
+        print("❌ Could not recognize speech. Try again!")
+        return
+
+    emo_char, label, polarity = detect_emotion(text)
+    print(f"➤  {text} {emo_char}")
+
+
+# 🏁 Run
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nExited by user.")
